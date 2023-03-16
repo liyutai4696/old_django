@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>选择页面</title>
+</head>
+<body>
+
+<p>{{ message }}</p>
+<h2>
+<a href="/select_page/">主页</a>
+</h2>
+<a href="/get_stock_list_csv/">下载股票列表.csv</a>
+<br>
+<a href="/load_stock_list_csv/">上传股票列表.csv</a>
+<br>
+<form method='GET' action='/get_stock_k_data_csv/'>
+    <input type="submit" value='下载股票日线数据.csv'>
+    起始日期：<input type='date' name='start_date' value='2020-01-01'>
+    结束日期：<input type='date' name='end_date' value={{ today }}>
+</form>
+
+<a href="/get_stock_k_data_csv/">计算MA移动日均线.csv</a>
+<br>
+
+
+</body>
+</html>
