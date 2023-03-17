@@ -4,7 +4,10 @@ import pandas as pd
 import os
 from datetime import datetime
 
+import django
 import multiprocessing as mp
+
+from stock import fc
 
 from old_django.settings import BASE_DIR,SQLITE_ENGINE
 from stock.models import stock_list,stock_k_data
@@ -73,26 +76,27 @@ def load_stock_list_csv(request):
 
     start_time = datetime.now()
 
+    st = stock_list.objects.all().delete()
+
     context = {}
 
     csv_path = os.path.join(BASE_DIR,'car_trunk/csv/') + '股票列表.csv'
-
     data_list = pd.read_csv(csv_path,encoding='gbk')
+    data_list['is_cyb'] = [ True if code.find('sz.3')>0 else False for code in data_list['code']]
+    data_list['is_kcb'] = [ True if code.find('sh.688')>0 else False for code in data_list['code']]
+    
+    data_list.to_sql('stock_list',SQLITE_ENGINE,index=False,if_exists='append')
 
-    st = stock_list.objects.all().delete()
-
-    dl = []
-
-    for data in data_list.itertuples():
-        dl.append(dl)
-
-    p = mp.Process(target=load_stock_csv,args=dl)
-    p.start()
+    #pool = mp.Pool()
+    #pool.map(fc.load_stock_csv,dl)
+    #pool.close()
+    #pool.join()
 
     context['message'] = '股票列表上传完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
 def load_stock_csv(data):
+
     code = getattr(data,'code')
 
     d = {
@@ -109,7 +113,10 @@ def load_stock_csv(data):
     if code.find('sh.688')>=0:
         d['is_kcb'] = True
 
-    stock = stock_list.objects.create(**d)
+    d = pd.DataFrame(d)
+    print(d)
+
+    #stock = stock_list.objects.create(**d)
 
 def get_stock_k_data_csv(request):
     start_date = request.GET.get('start_date')
@@ -133,7 +140,7 @@ def get_stock_k_data_csv(request):
         # 详细指标参数，参见“历史行情指标参数”章节；“分钟线”参数与“日线”参数不同。“分钟线”不包含指数。
         # 分钟线指标：date,time,code,open,high,low,close,volume,amount,adjustflag
         # 周月线指标：date,code,open,high,low,close,volume,amount,adjustflag,turn,pctChg
-        rs = bs.query_history_k_data_plus(st.stock_code,
+        rs = bs.query_history_k_data_plus(st.code,
             "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST",
             start_date=start_date, end_date=end_date,
             frequency="d", adjustflag="3")
@@ -148,13 +155,16 @@ def get_stock_k_data_csv(request):
         result = pd.DataFrame(data_list, columns=rs.fields)
 
         #### 结果集输出到csv文件 ####   
-        csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/') + '{0}.csv'.format(st.stock_code)
+        csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/') + '{0}.csv'.format(st.code)
         result.to_csv(csv_path, index=False)
         #print(result)
 
-        stock = stock_list.objects.get(stock_code=st)
-        stock.k_data_update = result['date'].max()
-        stock.save()
+        stock = stock_list.objects.get(code=st)
+        try:
+            stock.k_data_update = result['date'].max()
+            stock.save()
+        except:
+            pass
 
     #### 登出系统 ####
     bs.logout()
