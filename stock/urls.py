@@ -9,4 +9,5 @@ urlpatterns = [
     path('get_stock_list_csv/',views.get_stock_list_csv),
     path('load_stock_list_csv/',views.load_stock_list_csv),
     path('get_stock_k_data_csv/',views.get_stock_k_data_csv),
+    path('load_stock_k_data_csv/',views.load_stock_k_data_csv),
 ]

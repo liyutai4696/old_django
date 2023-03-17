@@ -4,8 +4,11 @@ import pandas as pd
 import os
 from datetime import datetime
 
-from old_django.settings import BASE_DIR
-from stock.models import stock_list
+import multiprocessing as mp
+
+from old_django.settings import BASE_DIR,SQLITE_ENGINE
+from stock.models import stock_list,stock_k_data
+
 
 # Create your views here.
 
@@ -23,8 +26,6 @@ def function_page(request):
     context = {}
     context['page_title'] = '主页'
     context['context_title'] = '功能'
-
-
 
     return render(request,'function_page.html',context=context)
 
@@ -64,11 +65,9 @@ def get_stock_list_csv(request):
     # 登出系统
     bs.logout()
 
-
     context = {}
     context['message'] = '股票列表下载完成'
     return render(request,'select_page.html',context=context)
-
 
 def load_stock_list_csv(request):
 
@@ -82,28 +81,35 @@ def load_stock_list_csv(request):
 
     st = stock_list.objects.all().delete()
 
+    dl = []
+
     for data in data_list.itertuples():
-        code = getattr(data,'code')
+        dl.append(dl)
 
-        d = {
-                'stock_code':code,
-                'stock_name':getattr(data,'code_name'),
-                'stock_industry':getattr(data,'industry'),
-                'stock_industryClassification':getattr(data,'industryClassification'),
-                'update':getattr(data,'updateDate'),
-        }
-        
-        if code.find('sz.3')>=0:
-            d['is_cyb'] = True
-
-        if code.find('sh.688')>=0:
-            d['is_kcb'] = True
-
-        stock = stock_list.objects.create(**d)
+    p = mp.Process(target=load_stock_csv,args=dl)
+    p.start()
 
     context['message'] = '股票列表上传完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
+def load_stock_csv(data):
+    code = getattr(data,'code')
+
+    d = {
+            'stock_code':code,
+            'stock_name':getattr(data,'code_name'),
+            'stock_industry':getattr(data,'industry'),
+            'stock_industryClassification':getattr(data,'industryClassification'),
+            'update':getattr(data,'updateDate'),
+        }
+
+    if code.find('sz.3')>=0:
+        d['is_cyb'] = True
+
+    if code.find('sh.688')>=0:
+        d['is_kcb'] = True
+
+    stock = stock_list.objects.create(**d)
 
 def get_stock_k_data_csv(request):
     start_date = request.GET.get('start_date')
@@ -119,7 +125,7 @@ def get_stock_k_data_csv(request):
     print('login respond error_code:'+lg.error_code)
     print('login respond  error_msg:'+lg.error_msg)
 
-    for st in st_list[:2]:
+    for st in st_list:
         print(st)
 
 
@@ -147,14 +153,49 @@ def get_stock_k_data_csv(request):
         #print(result)
 
         stock = stock_list.objects.get(stock_code=st)
-        stock.k_data_update = datetime.today()
+        stock.k_data_update = result['date'].max()
         stock.save()
 
     #### 登出系统 ####
     bs.logout()
-    
-    
-    
+
     context = {}
     context['message'] = '股票日线数据下载完成.csv'
     return render(request,'select_page.html',context=context)
+
+def load_stock_k_data_csv(request):
+
+    csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/')
+
+    for root,dirs,files in os.walk(csv_path):
+        for filename in files[:2]:
+            if filename.endswith('csv'):
+
+
+                data = pd.read_csv(root + filename,encoding='gbk')
+                #data['date'] = data['date'].astype('date')
+                for d in data.itertuples():
+                    load_stock_k_day_data(d)
+
+    context = {}
+    context['message'] = '股票日线数据上传完成.csv'
+    return render(request,'select_page.html',context=context)
+
+def load_stock_k_day_data(data):
+    d = {
+        'date': getattr(data,'date') ,
+        'code': getattr(data,'code') ,
+        'open': getattr(data,'open') ,
+        'high': getattr(data,'high') ,
+        'low': getattr(data,'low') ,
+        'close': getattr(data,'close') ,
+        'preclose': getattr(data,'preclose') ,
+        'volume': getattr(data,'volume') ,
+        'amount': getattr(data,'amount') ,
+        'adjustflag': getattr(data,'adjustflag') ,
+        'turn': getattr(data,'turn') ,
+        'tradestatus': getattr(data,'tradestatus') ,
+        'pctChg': getattr(data,'pctChg') ,
+        'isST': getattr(data,'isST') ,
+    }
+    k_data = stock_k_data.objects.create(**d)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from sqlalchemy import create_engine
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,6 +27,8 @@ SECRET_KEY = '^^&z39jh2a!51im6j(47i3ahyb*a-7@5glq4obc=xhl@0$e_#b'
 DEBUG = True
 
 ALLOWED_HOSTS = []
+
+
 
 
 # Application definition
@@ -81,6 +84,9 @@ DATABASES = {
     }
 }
 
+database_name = DATABASES['default']['NAME']
+database_url = 'sqlite:///{}'.format(database_name)
+SQLITE_ENGINE = create_engine(database_url, echo=False)
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
