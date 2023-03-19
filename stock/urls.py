@@ -9,5 +9,9 @@ urlpatterns = [
     path('get_stock_list_csv/',views.get_stock_list_csv),
     path('load_stock_list_csv/',views.load_stock_list_csv),
     path('get_stock_k_data_csv/',views.get_stock_k_data_csv),
-    path('load_stock_k_data_csv/',views.load_stock_k_data_csv),
+    path('empty_stock_k_data/',views.empty_stock_k_data),
+    path('load_stock_data_csv/',views.load_stock_data_csv),
+    path('update_stock_MA_data/',views.update_stock_MA_data),
+    path('Three_sheep_went_up_the_mountain/',views.Three_sheep_went_up_the_mountain),
+    path('see_Three_sheep_went_up_the_mountain/',views.see_Three_sheep_went_up_the_mountain),
 ]

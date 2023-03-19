@@ -10,7 +10,7 @@ import multiprocessing as mp
 from stock import fc
 
 from old_django.settings import BASE_DIR,SQLITE_ENGINE
-from stock.models import stock_list,stock_k_data
+from stock.models import stock_list,Strategic_Stock_Selection_Table
 
 
 # Create your views here.
@@ -76,47 +76,20 @@ def load_stock_list_csv(request):
 
     start_time = datetime.now()
 
-    st = stock_list.objects.all().delete()
-
     context = {}
 
     csv_path = os.path.join(BASE_DIR,'car_trunk/csv/') + '股票列表.csv'
     data_list = pd.read_csv(csv_path,encoding='gbk')
-    data_list['is_cyb'] = [ True if code.find('sz.3')>0 else False for code in data_list['code']]
-    data_list['is_kcb'] = [ True if code.find('sh.688')>0 else False for code in data_list['code']]
+    data_list['is_cyb'] = [ True if code.find('sz.3')>=0 else False for code in data_list['code']]
+    data_list['is_kcb'] = [ True if code.find('sh.688')>=0 else False for code in data_list['code']]
+    data_list['table_name'] = [ code.replace('.','_') for code in data_list['code']]
     
+    print(data_list)
+    st = stock_list.objects.all().delete()
     data_list.to_sql('stock_list',SQLITE_ENGINE,index=False,if_exists='append')
-
-    #pool = mp.Pool()
-    #pool.map(fc.load_stock_csv,dl)
-    #pool.close()
-    #pool.join()
 
     context['message'] = '股票列表上传完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
-
-def load_stock_csv(data):
-
-    code = getattr(data,'code')
-
-    d = {
-            'stock_code':code,
-            'stock_name':getattr(data,'code_name'),
-            'stock_industry':getattr(data,'industry'),
-            'stock_industryClassification':getattr(data,'industryClassification'),
-            'update':getattr(data,'updateDate'),
-        }
-
-    if code.find('sz.3')>=0:
-        d['is_cyb'] = True
-
-    if code.find('sh.688')>=0:
-        d['is_kcb'] = True
-
-    d = pd.DataFrame(d)
-    print(d)
-
-    #stock = stock_list.objects.create(**d)
 
 def get_stock_k_data_csv(request):
     start_date = request.GET.get('start_date')
@@ -125,6 +98,7 @@ def get_stock_k_data_csv(request):
     print(start_date,end_date)
 
     st_list = stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)
+
 
     ### 登陆系统 ####
     lg = bs.login()
@@ -173,39 +147,85 @@ def get_stock_k_data_csv(request):
     context['message'] = '股票日线数据下载完成.csv'
     return render(request,'select_page.html',context=context)
 
-def load_stock_k_data_csv(request):
+def empty_stock_k_data(request):
+    st_list = stock_list.objects.all()
 
-    csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/')
-
-    for root,dirs,files in os.walk(csv_path):
-        for filename in files[:2]:
-            if filename.endswith('csv'):
-
-
-                data = pd.read_csv(root + filename,encoding='gbk')
-                #data['date'] = data['date'].astype('date')
-                for d in data.itertuples():
-                    load_stock_k_day_data(d)
-
+    for code in st_list:
+        print(code)
+        try:
+            st = stock_data.objects.filter(code__exact=code).delete()
+        except:
+            pass
     context = {}
-    context['message'] = '股票日线数据上传完成.csv'
+    context['message'] = '股票日线数据清空完成'
     return render(request,'select_page.html',context=context)
 
-def load_stock_k_day_data(data):
-    d = {
-        'date': getattr(data,'date') ,
-        'code': getattr(data,'code') ,
-        'open': getattr(data,'open') ,
-        'high': getattr(data,'high') ,
-        'low': getattr(data,'low') ,
-        'close': getattr(data,'close') ,
-        'preclose': getattr(data,'preclose') ,
-        'volume': getattr(data,'volume') ,
-        'amount': getattr(data,'amount') ,
-        'adjustflag': getattr(data,'adjustflag') ,
-        'turn': getattr(data,'turn') ,
-        'tradestatus': getattr(data,'tradestatus') ,
-        'pctChg': getattr(data,'pctChg') ,
-        'isST': getattr(data,'isST') ,
-    }
-    k_data = stock_k_data.objects.create(**d)
+def load_stock_data_csv(request):
+    start_time = datetime.now()
+
+    csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/')
+    dl = []
+
+    for root,dirs,files in os.walk(csv_path):
+        for filename in files:
+            if filename.endswith('csv'):
+                dl.append(root + filename)
+
+    pool = mp.Pool()
+    pool.map(fc.mp_load_stock_k_and_ma_day_data,dl)
+    pool.close()
+    pool.join()
+
+    context = {}
+    context['message'] = '股票日线数据上传并初始化MA、KDJ完成，用时{0}秒'.format(datetime.now() - start_time)
+    return render(request,'select_page.html',context=context)
+
+def update_stock_MA_data(request):
+    context = {}
+
+    st_list = stock_list.objects.all()
+
+    dl = []
+    for st in st_list:
+        dl.append(st.code)
+
+    pool = mp.Pool()
+    pool.map(fc.mp_calculate_stock_MA_data,dl)
+    pool.close()
+    pool.join()
+
+    context['message'] = '移动平均线MA指标计算完成'
+    return render(request,'select_page.html',context=context)
+
+
+def Three_sheep_went_up_the_mountain(request):
+
+    start_time = datetime.now()
+    context = {}
+
+    st_list = stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)
+    dl = []
+    for st in st_list:
+        dl.append(st.code.replace('.',"_"))
+
+    pool = mp.Pool()
+    pool.map(fc.mp_Three_sheep_went_up_the_mountain,dl)
+    pool.close()
+    pool.join()
+
+    context['message'] = '三羊上山选股完成，用时{0}秒'.format(datetime.now() - start_time)
+    return render(request,'select_page.html',context=context)
+
+
+def see_Three_sheep_went_up_the_mountain(request):
+
+    context = {}
+    st_list = Strategic_Stock_Selection_Table.objects.all()
+
+
+    li = ''
+    for st in st_list:
+        li = li + st.code + '<br>'
+
+    context['message'] = li
+    return HttpResponse(li)

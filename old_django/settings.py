@@ -83,7 +83,7 @@ DATABASES = {
         'NAME': 'old_django',
         'USER': 'saber',
         'PASSWORD': 'Mysql_123',
-        'HOST': '139.9.82.237',
+        'HOST': '127.0.0.1',
         'PORT': '3306',
         #取消外键约束，否则多对多模型迁移报django.db.utils.IntegrityError: (1215, 'Cannot add foreign key constraint')
         'OPTIONS': {
@@ -94,7 +94,7 @@ DATABASES = {
 }
 
 database_name = DATABASES['default']['NAME']
-database_url = 'mysql://{0}:{1}@139.9.82.237:3306/old_django?charset=utf8'.format(DATABASES['default']['USER'],DATABASES['default']['PASSWORD'])
+database_url = 'mysql://{0}:{1}@127.0.0.1:3306/old_django?charset=utf8'.format(DATABASES['default']['USER'],DATABASES['default']['PASSWORD'])
 SQLITE_ENGINE = create_engine(database_url, echo=False)
 
 # Password validation
