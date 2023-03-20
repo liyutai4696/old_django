@@ -2,7 +2,7 @@ from django.shortcuts import render,HttpResponse,redirect
 import baostock as bs
 import pandas as pd
 import os
-from datetime import datetime
+from datetime import datetime,timedelta
 
 import django
 import multiprocessing as mp
@@ -99,7 +99,6 @@ def get_stock_k_data_csv(request):
 
     st_list = stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)
 
-
     ### 登陆系统 ####
     lg = bs.login()
     # 显示登陆返回信息
@@ -108,7 +107,6 @@ def get_stock_k_data_csv(request):
 
     for st in st_list:
         print(st)
-
 
         #### 获取沪深A股历史K线数据 ####
         # 详细指标参数，参见“历史行情指标参数”章节；“分钟线”参数与“日线”参数不同。“分钟线”不包含指数。
@@ -147,19 +145,6 @@ def get_stock_k_data_csv(request):
     context['message'] = '股票日线数据下载完成.csv'
     return render(request,'select_page.html',context=context)
 
-def empty_stock_k_data(request):
-    st_list = stock_list.objects.all()
-
-    for code in st_list:
-        print(code)
-        try:
-            st = stock_data.objects.filter(code__exact=code).delete()
-        except:
-            pass
-    context = {}
-    context['message'] = '股票日线数据清空完成'
-    return render(request,'select_page.html',context=context)
-
 def load_stock_data_csv(request):
     start_time = datetime.now()
 
@@ -180,23 +165,86 @@ def load_stock_data_csv(request):
     context['message'] = '股票日线数据上传并初始化MA、KDJ完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
-def update_stock_MA_data(request):
+def update_stock_k_data(request):
+    context = {}
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    st_list = get_stock_list()
+
+    code_list = []
+
+    ### 登陆系统 ####
+    lg = bs.login()
+    # 显示登陆返回信息
+    #print('login respond error_code:'+lg.error_code)
+    #print('login respond  error_msg:'+lg.error_msg)
+
+    for st in st_list:
+        code = st.code.replace('.','_')
+
+        sql = 'select max(date) from ' + code
+        start_date = SQLITE_ENGINE.execute(sql).fetchall()
+
+        
+        try:
+            start_date = ((start_date[0])[0] + timedelta(days=1)).strftime("%Y-%m-%d")
+        except:
+            continue
+
+        #### 获取沪深A股历史K线数据 ####
+        # 详细指标参数，参见“历史行情指标参数”章节；“分钟线”参数与“日线”参数不同。“分钟线”不包含指数。
+        # 分钟线指标：date,time,code,open,high,low,close,volume,amount,adjustflag
+        # 周月线指标：date,code,open,high,low,close,volume,amount,adjustflag,turn,pctChg
+        rs = bs.query_history_k_data_plus(st.code,
+            "date,code,open,high,low,close,preclose,volume,amount,adjustflag,turn,tradestatus,pctChg,isST",
+            start_date=start_date, end_date=today,
+            frequency="d", adjustflag="3")
+        #print('query_history_k_data_plus respond error_code:'+rs.error_code)
+        #print('query_history_k_data_plus respond  error_msg:'+rs.error_msg)
+
+        #### 打印结果集 ####
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            # 获取一条记录，将记录合并在一起
+            data_list.append(rs.get_row_data())
+        result = pd.DataFrame(data_list, columns=rs.fields)
+
+        #### 结果集输出到csv文件 ####   
+        #csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/') + '{0}.csv'.format(st.code)
+        result.to_sql(code,SQLITE_ENGINE,index=False,if_exists="append")
+        #result.to_csv(csv_path, index=False)
+        #print(result)
+
+        stock = stock_list.objects.get(code=st)
+        try:
+            stock.k_data_update = result['date'].max()
+            stock.save()
+        except:
+            pass
+
+    #### 登出系统 ####
+    bs.logout()
+
+
+    context['message'] = '日线数据更新完成'
+    return render(request,'select_page.html',context=context)
+
+def update_stock_MA_KDJ_data(request):
     context = {}
 
-    st_list = stock_list.objects.all()
+    st_list = get_stock_list()
 
     dl = []
     for st in st_list:
-        dl.append(st.code)
+        dl.append(st.table_name)
 
     pool = mp.Pool()
     pool.map(fc.mp_calculate_stock_MA_data,dl)
     pool.close()
     pool.join()
 
-    context['message'] = '移动平均线MA指标计算完成'
+    context['message'] = '移动平均线MA指标更新完成'
     return render(request,'select_page.html',context=context)
-
 
 def Three_sheep_went_up_the_mountain(request):
 
@@ -216,7 +264,6 @@ def Three_sheep_went_up_the_mountain(request):
     context['message'] = '三羊上山选股完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
-
 def see_Three_sheep_went_up_the_mountain(request):
 
     context = {}
@@ -229,3 +276,6 @@ def see_Three_sheep_went_up_the_mountain(request):
 
     context['message'] = li
     return HttpResponse(li)
+
+def get_stock_list():
+    return stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)

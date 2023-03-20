@@ -2,6 +2,7 @@ from old_django.settings import SQLITE_ENGINE
 
 import pandas as pd
 from datetime import datetime,timedelta
+import baostock as bs
 
 def mp_load_stock_k_and_ma_day_data(path):
     print(path)
@@ -41,7 +42,7 @@ def mp_load_stock_k_and_ma_day_data(path):
 
     return
 
-def mp_calculate_stock_MA_data(code):
+def mp_update_stock_MA_KDJ_data(code):
     sql = 'select date,code,close from stock_k_data where code=\'{0}\' order by date'.format(code)
 
     print(sql)
@@ -99,7 +100,6 @@ def mp_Three_sheep_went_up_the_mountain(code):
                 d.to_sql('strategic_stock_selection_table',SQLITE_ENGINE,index=False,if_exists='append')
                 return
     return
-
 
 def create_table(code):
     try:
