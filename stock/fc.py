@@ -43,20 +43,36 @@ def mp_load_stock_k_and_ma_day_data(path):
     return
 
 def mp_update_stock_MA_KDJ_data(code):
-    sql = 'select date,code,close from stock_k_data where code=\'{0}\' order by date'.format(code)
-
-    print(sql)
+    sql = 'select * from {0} order by date'.format(code)
     data = pd.read_sql(sql,SQLITE_ENGINE)
 
     if len(data)==0:
         return
 
     ma_list = [5,10,20,30,60,120,180,360]
-
     for ma in ma_list:
         data["MA_"+str(ma)] = data["close"].rolling(ma).mean()
-        
-    data.to_sql('stock_ma_data',SQLITE_ENGINE,index=False,if_exists="append")
+
+    #九天最低价
+    lowest = data["low"].rolling(9).min()
+    lowest.fillna(value=data["low"].expanding().min(),inplace=True)
+    
+    #九天最高价
+    highest = data["high"].rolling(9).max()
+    highest.fillna(value=data["high"].expanding().min(),inplace=True)
+
+    #计算RSV
+    rsv = (data["close"] - lowest) / (highest - lowest) * 100
+    rsv.fillna(value=100.0,inplace=True)
+
+    data["k"] = rsv.ewm(com=2, adjust=False).mean()
+    data["d"] = data["k"].ewm(com=2, adjust=False).mean()
+    data["j"] = 3 * data["k"] - 2 * data["d"]
+    
+    sql = 'truncate table ' + code
+    SQLITE_ENGINE.execute(sql)
+
+    data.to_sql(code,SQLITE_ENGINE,index=False,if_exists='append')
 
     return
 
