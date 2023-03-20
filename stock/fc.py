@@ -43,6 +43,7 @@ def mp_load_stock_k_and_ma_day_data(path):
     return
 
 def mp_update_stock_MA_KDJ_data(code):
+    print(code)
     sql = 'select * from {0} order by date'.format(code)
     data = pd.read_sql(sql,SQLITE_ENGINE)
 

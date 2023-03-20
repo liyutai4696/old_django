@@ -181,6 +181,16 @@ def update_stock_k_data(request):
 
     for st in st_list:
         code = st.code.replace('.','_')
+        print(code)
+
+        sql = 'select isST from {0} order by date desc LIMIT 1'.format(code)
+
+        try:
+            ST = SQLITE_ENGINE.execute(sql).fetchall()[-1]
+            if ST[0]=='1':
+                continue
+        except:
+            continue
 
         sql = 'select max(date) from ' + code
         start_date = SQLITE_ENGINE.execute(sql).fetchall()
@@ -189,6 +199,9 @@ def update_stock_k_data(request):
         try:
             start_date = ((start_date[0])[0] + timedelta(days=1)).strftime("%Y-%m-%d")
         except:
+            continue
+
+        if today <= start_date:
             continue
 
         #### 获取沪深A股历史K线数据 ####
@@ -207,10 +220,19 @@ def update_stock_k_data(request):
         while (rs.error_code == '0') & rs.next():
             # 获取一条记录，将记录合并在一起
             data_list.append(rs.get_row_data())
-        result = pd.DataFrame(data_list, columns=rs.fields)
 
+       
+        result = pd.DataFrame(data_list, columns=rs.fields)
+        if len(result)==0:
+            continue
+        
         #### 结果集输出到csv文件 ####   
         #csv_path = os.path.join(BASE_DIR,'car_trunk/stock_csv/') + '{0}.csv'.format(st.code)
+        result.drop(['code'],axis=1,inplace=True)
+        result['volume'] = [0 if x=='' else x for x in result['volume'] ]
+        result['amount'] = [0 if x=='' else x for x in result['amount'] ]
+        result['turn'] = [0 if x=='' else x for x in result['turn'] ]
+        result['pctChg'] = [0 if x=='' else x for x in result['pctChg'] ]
         result.to_sql(code,SQLITE_ENGINE,index=False,if_exists="append")
         #result.to_csv(csv_path, index=False)
         #print(result)
@@ -239,7 +261,7 @@ def update_stock_MA_KDJ_data(request):
         dl.append(st.table_name)
 
     pool = mp.Pool()
-    pool.map(fc.mp_calculate_stock_MA_data,dl)
+    pool.map(fc.mp_update_stock_MA_KDJ_data,dl)
     pool.close()
     pool.join()
 
