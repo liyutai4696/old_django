@@ -6,6 +6,8 @@ from datetime import datetime,timedelta
 
 import django
 import multiprocessing as mp
+from pyecharts.charts import Line
+import pyecharts.options as opts
 
 from stock import fc
 
@@ -181,7 +183,7 @@ def update_stock_k_data(request):
 
     for st in st_list:
         code = st.code.replace('.','_')
-        print(code)
+        
 
         sql = 'select isST from {0} order by date desc LIMIT 1'.format(code)
 
@@ -195,14 +197,16 @@ def update_stock_k_data(request):
         sql = 'select max(date) from ' + code
         start_date = SQLITE_ENGINE.execute(sql).fetchall()
 
+        s = (start_date[0])[0].strftime("%Y-%m-%d")
+        if s == start_date:
+            continue
         
         try:
             start_date = ((start_date[0])[0] + timedelta(days=1)).strftime("%Y-%m-%d")
         except:
             continue
 
-        if today <= start_date:
-            continue
+        print(code,start_date,today)
 
         #### 获取沪深A股历史K线数据 ####
         # 详细指标参数，参见“历史行情指标参数”章节；“分钟线”参数与“日线”参数不同。“分钟线”不包含指数。
@@ -298,6 +302,53 @@ def see_Three_sheep_went_up_the_mountain(request):
 
     context['message'] = li
     return HttpResponse(li)
+
+def look_stock(request):
+    week_name_list = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    high_temperature = [11, 11, 15, 13, 12, 13, 10]
+    low_temperature = [1, -2, 2, 5, 3, 2, 0]
+
+
+    (
+        Line()
+        .add_xaxis(xaxis_data=week_name_list)
+        .add_yaxis(
+            series_name="最高气温",
+            y_axis=high_temperature,
+            markpoint_opts=opts.MarkPointOpts(
+                data=[
+                    opts.MarkPointItem(type_="max", name="最大值"),
+                    opts.MarkPointItem(type_="min", name="最小值"),
+                ]
+            ),
+            markline_opts=opts.MarkLineOpts(
+                data=[opts.MarkLineItem(type_="average", name="平均值")]
+            ),
+        )
+        .add_yaxis(
+            series_name="最低气温",
+            y_axis=low_temperature,
+            markpoint_opts=opts.MarkPointOpts(
+                data=[opts.MarkPointItem(value=-2, name="周最低", x=1, y=-1.5)]
+            ),
+            markline_opts=opts.MarkLineOpts(
+                data=[
+                    opts.MarkLineItem(type_="average", name="平均值"),
+                    opts.MarkLineItem(symbol="none", x="90%", y="max"),
+                    opts.MarkLineItem(symbol="circle", type_="max", name="最高点"),
+                ]
+            ),
+        )
+        .set_global_opts(
+            title_opts=opts.TitleOpts(title="未来一周气温变化", subtitle="纯属虚构"),
+            tooltip_opts=opts.TooltipOpts(trigger="axis"),
+            toolbox_opts=opts.ToolboxOpts(is_show=True),
+            xaxis_opts=opts.AxisOpts(type_="category", boundary_gap=False),
+        )
+        .render("temperature_change_line_chart.html")
+    )
+
+    return HttpResponse("")
 
 def get_stock_list():
     return stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)

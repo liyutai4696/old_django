@@ -14,4 +14,5 @@ urlpatterns = [
     path('update_stock_MA_KDJ_data/',views.update_stock_MA_KDJ_data),
     path('Three_sheep_went_up_the_mountain/',views.Three_sheep_went_up_the_mountain),
     path('see_Three_sheep_went_up_the_mountain/',views.see_Three_sheep_went_up_the_mountain),
+    path('look_stock/',views.look_stock),
 ]
