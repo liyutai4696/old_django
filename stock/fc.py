@@ -43,7 +43,7 @@ def mp_load_stock_k_and_ma_day_data(path):
     return
 
 def mp_update_stock_MA_KDJ_data(code):
-    print(code)
+    #print(code)
     sql = 'select * from {0} order by date'.format(code)
     data = pd.read_sql(sql,SQLITE_ENGINE)
 
@@ -79,7 +79,7 @@ def mp_update_stock_MA_KDJ_data(code):
 
 def mp_Three_sheep_went_up_the_mountain(code):
 
-    print(code)
+    #print(code)
 
     date = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
 
@@ -94,12 +94,15 @@ def mp_Three_sheep_went_up_the_mountain(code):
 
     pd_list = ""
 
+    zt_close = data['close'].values[-5] 
     for x in range(len(data)):
-        if data.loc[x,'close'] > data['close'].values[-5] :     #float(data.loc[x,'昨日收盘价']) :
+        if data['close'].values[x] > zt_close :     #float(data.loc[x,'昨日收盘价']) :
             pd_list = pd_list + "1"
         else:
             pd_list = pd_list + "0"
 
+        zt_close = data['close'].values[x]
+        
     sp = data['close'].values[-1]
     ma5 = data['MA_5'].values[-1]
     ma10 = data['MA_10'].values[-1]

@@ -290,18 +290,6 @@ def Three_sheep_went_up_the_mountain(request):
     context['message'] = '三羊上山选股完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
-def see_Three_sheep_went_up_the_mountain(request):
-
-    context = {}
-    st_list = Strategic_Stock_Selection_Table.objects.all()
-
-
-    li = ''
-    for st in st_list:
-        li = li + st.code + '<br>'
-
-    context['message'] = li
-    return HttpResponse(li)
 
 def look_stock(request):
     context = {}
