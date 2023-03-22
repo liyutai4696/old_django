@@ -4,9 +4,9 @@ import pandas as pd
 import os
 from datetime import datetime,timedelta
 
-import django
+from bs4 import BeautifulSoup
 import multiprocessing as mp
-from pyecharts.charts import Line
+from pyecharts.charts import Line,Bar
 import pyecharts.options as opts
 
 from stock import fc
@@ -304,51 +304,67 @@ def see_Three_sheep_went_up_the_mountain(request):
     return HttpResponse(li)
 
 def look_stock(request):
-    week_name_list = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
-    high_temperature = [11, 11, 15, 13, 12, 13, 10]
-    low_temperature = [1, -2, 2, 5, 3, 2, 0]
+    context = {}
+    context['gpc_name'] = request.GET.get('gpc')
+    data_date = request.GET.get('data_date')
+    if data_date==None:
+        data_date = datetime.now()
+    try:
+        data_date = datetime(int(data_date.split('-')[0]),int(data_date.split('-')[1]),int(data_date.split('-')[2]))
+    except:
+        pass
+    context['data_date'] = data_date.strftime("%Y-%m-%d")
 
+    data_length = request.GET.get('data_length')
+    if data_length==None:
+        data_length = 30
+    
+    context['data_length'] = data_length
+    
+    code_list = Strategic_Stock_Selection_Table.objects.all()
+    context['stock_count'] = code_list.count()
 
-    (
-        Line()
-        .add_xaxis(xaxis_data=week_name_list)
-        .add_yaxis(
-            series_name="最高气温",
-            y_axis=high_temperature,
-            markpoint_opts=opts.MarkPointOpts(
-                data=[
-                    opts.MarkPointItem(type_="max", name="最大值"),
-                    opts.MarkPointItem(type_="min", name="最小值"),
-                ]
-            ),
-            markline_opts=opts.MarkLineOpts(
-                data=[opts.MarkLineItem(type_="average", name="平均值")]
-            ),
-        )
-        .add_yaxis(
-            series_name="最低气温",
-            y_axis=low_temperature,
-            markpoint_opts=opts.MarkPointOpts(
-                data=[opts.MarkPointItem(value=-2, name="周最低", x=1, y=-1.5)]
-            ),
-            markline_opts=opts.MarkLineOpts(
-                data=[
-                    opts.MarkLineItem(type_="average", name="平均值"),
-                    opts.MarkLineItem(symbol="none", x="90%", y="max"),
-                    opts.MarkLineItem(symbol="circle", type_="max", name="最高点"),
-                ]
-            ),
-        )
-        .set_global_opts(
-            title_opts=opts.TitleOpts(title="未来一周气温变化", subtitle="纯属虚构"),
-            tooltip_opts=opts.TooltipOpts(trigger="axis"),
-            toolbox_opts=opts.ToolboxOpts(is_show=True),
-            xaxis_opts=opts.AxisOpts(type_="category", boundary_gap=False),
-        )
-        .render("temperature_change_line_chart.html")
-    )
+    c_html = ""
 
-    return HttpResponse("")
+    for code in code_list:
+        table_name = code.code
+        start_date = (data_date - timedelta(days=int(data_length))).strftime("%Y-%m-%d")
+        sql = 'select * from {0} where date>=\'{1}\''.format(table_name,start_date)
+        stock_data = pd.read_sql(sql,SQLITE_ENGINE)
+        #print(stock_data)
+        
+        date_list = stock_data['date'].to_list()
+        close_list = stock_data['close'].to_list()
+        MA5_list = stock_data['MA_5'].to_list()
+        MA10_list = stock_data['MA_10'].to_list()
+        MA20_list = stock_data['MA_30'].to_list()
+        MA30_list = stock_data['MA_30'].to_list()
+
+        stock = stock_list.objects.get(code=table_name.replace('_','.'))
+
+        line = (
+            Line()
+            .add_xaxis(date_list)
+            .add_yaxis("close", close_list,label_opts=False,is_symbol_show=False)
+            .add_yaxis("MA5", MA5_list,label_opts=False,is_symbol_show=False)
+            .add_yaxis("MA10", MA10_list,label_opts=False,is_symbol_show=False)
+            .add_yaxis("MA20", MA20_list,label_opts=False,is_symbol_show=False)
+            .add_yaxis("MA30", MA30_list,label_opts=False,is_symbol_show=False)
+            .set_global_opts(
+                title_opts=opts.TitleOpts(title=table_name, subtitle=stock.code_name),
+                yaxis_opts=opts.AxisOpts(min_='dataMin'),
+                tooltip_opts=opts.TooltipOpts(trigger="axis"),
+                )
+            )
+
+        bar_html = BeautifulSoup(line.render_embed(),'html.parser')
+        bar_html = bar_html.body.contents
+
+        for html in bar_html:
+            c_html = c_html + str(html)
+    
+    context['context'] =  c_html
+    return render(request,'look_stock.html',context=context)
 
 def get_stock_list():
     return stock_list.objects.filter(is_kcb__exact=False).filter(is_cyb__exact=False)

@@ -1,12 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8">
+        <title>图表</title>
+
+        {% load static %}
+        <script type="text/javascript" src={% static 'v5_echarts.min.js'%}></script>
     
+    </head>
+<body>
+    <form method='GET' action='/look_stock/'>
+        数据长度：
+        <select name='data_length'>
+            <option value="30">30</option>
+            <option value="60">60</option>
+            <option value="120">120</option>
+            <option value="180">180</option>
+            <option value="360">360</option>
+        </select>
+        股票池：
+        <select name="gpc">
+            <option value="Three_sheep_went_up_the_mountain">三羊上山</option>
+        </select>
+        查看日期：<input type='date' name='data_date' value={{ data_date }}>
+        <input type="submit" value='查看'>
+    </form>
+
+    当前数据长度：{{ data_length }}
+    当前股票池：{{ gpc_name }}
+    当前股票池数量：{{ stock_count }}
+    <br>
+
+
+    {% autoescape off %}
+    {{ context }}
+    {% endautoescape %}
+
 </body>
 </html>
