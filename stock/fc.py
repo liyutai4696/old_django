@@ -80,8 +80,7 @@ def mp_update_stock_MA_KDJ_data(code):
 def mp_Three_sheep_went_up_the_mountain(code):
 
     #print(code)
-
-    date = (datetime.now() - timedelta(days=15)).strftime("%Y-%m-%d")
+    date = (datetime.now() - timedelta(days=20)).strftime("%Y-%m-%d")
 
     sql = "select date,close,preclose,MA_5,MA_10,MA_30 from {0} where date>=\'{1}\'".format(code,date)
 

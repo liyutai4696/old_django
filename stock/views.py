@@ -6,7 +6,7 @@ from datetime import datetime,timedelta
 
 from bs4 import BeautifulSoup
 import multiprocessing as mp
-from pyecharts.charts import Line,Bar
+from pyecharts.charts import Line,Kline,Grid
 import pyecharts.options as opts
 
 from stock import fc
@@ -290,6 +290,11 @@ def Three_sheep_went_up_the_mountain(request):
     context['message'] = '三羊上山选股完成，用时{0}秒'.format(datetime.now() - start_time)
     return render(request,'select_page.html',context=context)
 
+def clean_xgc(request):
+    context = {}
+    data = Strategic_Stock_Selection_Table.objects.all().delete()
+    context['message'] = '清空选股池成功'
+    return render(request,'select_page.html',context=context)
 
 def look_stock(request):
     context = {}
@@ -327,10 +332,20 @@ def look_stock(request):
         MA10_list = stock_data['MA_10'].to_list()
         MA20_list = stock_data['MA_30'].to_list()
         MA30_list = stock_data['MA_30'].to_list()
+        data = []
+
+        for x in stock_data.itertuples():
+            d = []
+            d.append(getattr(x,'open'))
+            d.append(getattr(x,'close'))
+            d.append(getattr(x,'high'))
+            d.append(getattr(x,'low'))
+
+            data.append(d)
 
         stock = stock_list.objects.get(code=table_name.replace('_','.'))
 
-        line = (
+        line1 = (
             Line()
             .add_xaxis(date_list)
             .add_yaxis("close", close_list,label_opts=False,is_symbol_show=False)
@@ -345,7 +360,30 @@ def look_stock(request):
                 )
             )
 
-        bar_html = BeautifulSoup(line.render_embed(),'html.parser')
+        kline1 = (
+            Kline()
+            .add_xaxis(date_list)
+            .add_yaxis("kline", data)
+            .set_global_opts(
+                xaxis_opts=opts.AxisOpts(is_scale=True),
+                yaxis_opts=opts.AxisOpts(
+                    is_scale=True,
+                    splitarea_opts=opts.SplitAreaOpts(
+                        is_show=True, areastyle_opts=opts.AreaStyleOpts(opacity=1)
+                    ),
+                ),
+            )
+        )
+        overlap_1 = line1.overlap(kline1)
+
+        grid1 = (
+            Grid(init_opts=opts.InitOpts(width="1200px", height="800px"))
+            .add(
+                overlap_1, grid_opts=opts.GridOpts(pos_right="5%")
+            )
+        )
+
+        bar_html = BeautifulSoup(grid1.render_embed(),'html.parser')
         bar_html = bar_html.body.contents
 
         for html in bar_html:

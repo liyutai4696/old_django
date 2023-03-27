@@ -13,5 +13,6 @@ urlpatterns = [
     path('update_stock_k_data/',views.update_stock_k_data),
     path('update_stock_MA_KDJ_data/',views.update_stock_MA_KDJ_data),
     path('Three_sheep_went_up_the_mountain/',views.Three_sheep_went_up_the_mountain),
+    path('clean_xgc/',views.clean_xgc),
     path('look_stock/',views.look_stock),
 ]
