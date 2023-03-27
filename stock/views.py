@@ -349,7 +349,7 @@ def look_stock(request):
         bar_html = bar_html.body.contents
 
         for html in bar_html:
-            c_html = c_html + str(html)
+            c_html = c_html + str(html) + ""
     
     context['context'] =  c_html
     return render(request,'look_stock.html',context=context)
