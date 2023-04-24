@@ -338,8 +338,8 @@ def look_stock(request):
             d = []
             d.append(getattr(x,'open'))
             d.append(getattr(x,'close'))
-            d.append(getattr(x,'high'))
             d.append(getattr(x,'low'))
+            d.append(getattr(x,'high'))
 
             data.append(d)
 

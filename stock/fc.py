@@ -93,7 +93,11 @@ def mp_Three_sheep_went_up_the_mountain(code):
 
     pd_list = ""
 
-    zt_close = data['close'].values[-5] 
+    try:
+        zt_close = data['close'].values[-5] 
+    except:
+        return
+    
     for x in range(len(data)):
         if data['close'].values[x] > zt_close :     #float(data.loc[x,'昨日收盘价']) :
             pd_list = pd_list + "1"
