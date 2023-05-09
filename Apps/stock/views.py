@@ -9,10 +9,10 @@ import multiprocessing as mp
 from pyecharts.charts import Line,Kline,Grid
 import pyecharts.options as opts
 
-from stock import fc
+from Apps.stock import fc
 
 from old_django.settings import BASE_DIR,SQLITE_ENGINE
-from stock.models import stock_list,Strategic_Stock_Selection_Table
+from Apps.stock.models import stock_list,Strategic_Stock_Selection_Table
 
 
 # Create your views here.
@@ -206,6 +206,9 @@ def update_stock_k_data(request):
         except:
             continue
 
+        if start_date > today :
+            continue
+        
         print(code,start_date,today)
 
         #### 获取沪深A股历史K线数据 ####
