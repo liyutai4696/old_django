@@ -22,7 +22,7 @@ def post_url(request):
                 is_execute= request.POST.get('执行中'),
                 is_complete = request.POST.get('已执行')
                 )
-
+            
     return HttpResponse('')
 
 def update_url(request):
